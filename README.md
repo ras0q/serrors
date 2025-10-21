@@ -8,20 +8,20 @@ package main
 import (
     // ...
     "log/slog"
-	"github.com/ras0q/serrors"
+    "github.com/ras0q/serrors"
 )
 
 func main() {
-	base := slog.NewJSONHandler(os.Stderr, nil)
-	wrapped := serrors.NewHandler(base)
-	logger := slog.New(wrapped)
+    base := slog.NewJSONHandler(os.Stderr, nil)
+    wrapped := serrors.NewHandler(base)
+    logger := slog.New(wrapped)
 
-	// Set the global default logger for the process
-	slog.SetDefault(logger)
+    // Set the global default logger for the process
+    slog.SetDefault(logger)
 
-	// run your application...
+    // run your application...
     ctx := context.Background()
-	if err := doSomething(ctx); err != nil {
+    if err := doSomething(ctx); err != nil {
         slog.ErrorContext(ctx, "doSomething", "error", err)
     }
 }
