@@ -1,3 +1,3 @@
 module github.com/ras0q/serrors
 
-go 1.24.8
+go 1.25.3

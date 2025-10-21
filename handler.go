@@ -2,7 +2,6 @@ package serrors
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 )
 
@@ -28,17 +27,12 @@ func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 			return true
 		}
 
-		switch se := v.(type) {
-		case *SError:
-			record.Add(se.Args...)
-		case SError:
-			record.Add(se.Args...)
-		case error:
-			var extracted *SError
-			if errors.As(se, &extracted) && extracted != nil {
-				record.Add(extracted.Args...)
-			}
+		err, ok := v.(LogAttrsProviderError)
+		if !ok {
+			return true
 		}
+
+		record.Add(err.LogAttrs()...)
 
 		return true
 	})
