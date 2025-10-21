@@ -52,8 +52,21 @@ func Test_Handler(t *testing.T) {
 			expected: makeJSONLog(`"error":"api error","statusCode":500`),
 		},
 		"serrors.New with slog.Attr": {
-			err:      serrors.New("api error", slog.Int("statusCode", 500)),
-			expected: makeJSONLog(`"error":"api error","statusCode":500`),
+			err: serrors.New(
+				"api error",
+				"userID", 12345,
+				slog.Group("request",
+					slog.String("method", "GET"),
+					slog.String("url", "/api/data"),
+				),
+				slog.Group("response",
+					slog.Int("statusCode", 500),
+					"status", "Internal Server Error",
+				),
+			),
+			expected: makeJSONLog(
+				`"error":"api error","userID":12345,"request":{"method":"GET","url":"/api/data"},"response":{"statusCode":500,"status":"Internal Server Error"}`,
+			),
 		},
 		"serrors.Wrap": {
 			err: serrors.Wrap(
@@ -86,7 +99,21 @@ func Test_Handler(t *testing.T) {
 				"database error",
 				"dbName", "users",
 			),
-			expected: makeJSONLog(`"error":"database error: failed to connect: connection refused","dbName":"users","host":"localhost","port":5432`),
+			expected: makeJSONLog(
+				`"error":"database error: failed to connect: connection refused","dbName":"users","host":"localhost","port":5432`,
+			),
+		},
+		// follow https://pkg.go.dev/log/slog#Record.Add
+		"handler does not override keys": {
+			err: serrors.Wrap(
+				serrors.New("low-level error", "code", 1001, "detail", "disk full"),
+				"high-level error",
+				"code", 2002,
+				"detail", "network issue",
+			),
+			expected: makeJSONLog(
+				`"error":"high-level error: low-level error","code":2002,"detail":"network issue","code":1001,"detail":"disk full"`,
+			),
 		},
 	}
 
