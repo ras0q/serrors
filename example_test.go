@@ -10,6 +10,9 @@ import (
 )
 
 func Example() {
+	serrors.SetAutoFrame(true) // [optional] attach caller frame on every [serrors.Wrap] / [serrors.New]
+	defer serrors.SetAutoFrame(false)
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &_handlerOptsForTest))
 	slog.SetDefault(logger)
 
@@ -17,7 +20,7 @@ func Example() {
 		slog.Error("something failed", "error", err)
 	}
 
-	// Output: {"time":"0001-01-01T00:00:00Z","level":"ERROR","msg":"something failed","error":{"msg":"open file","filename":"notfound.txt","userID":"001","frame":{"function":"github.com/ras0q/serrors_test.doSomething","file":"example_test.go","line":33},"cause":"open notfound.txt: no such file or directory"}}
+	// Output: {"time":"0001-01-01T00:00:00Z","level":"ERROR","msg":"something failed","error":{"msg":"open file","filename":"notfound.txt","userID":"001","frame":{"function":"github.com/ras0q/serrors_test.doSomething","file":"example_test.go","line":36},"cause":"open notfound.txt: no such file or directory"}}
 }
 
 func doSomething() error {

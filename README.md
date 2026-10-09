@@ -43,3 +43,9 @@ func doSomething() error {
 	return nil
 }
 ```
+
+## Frame
+
+To record where an error was wrapped, pass `serrors.Frame()` to `Wrap` or `New`. It adds a `frame` attribute (function, file, line) in logs only; it is not part of `err.Error()`.
+
+For every error in the process, call `serrors.SetAutoFrame(true)` once (for example from `main`). `New` and `Wrap` then attach a frame automatically unless you already passed `Frame()` on that call.
