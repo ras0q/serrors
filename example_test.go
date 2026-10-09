@@ -9,17 +9,14 @@ import (
 )
 
 func Example() {
-	base := slog.NewJSONHandler(os.Stdout, &handlerOptsForTest)
-	wrapped := serrors.NewHandler(base)
-	logger := slog.New(wrapped)
-
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &_handlerOptsForTest))
 	slog.SetDefault(logger)
 
 	if err := doSomething(); err != nil {
 		slog.Error("something failed", "error", err)
 	}
 
-	// Output: {"time":"0001-01-01T00:00:00Z","level":"ERROR","msg":"something failed","error":"open file: open notfound.txt: no such file or directory","filename":"notfound.txt","userID":"001"}
+	// Output: {"time":"0001-01-01T00:00:00Z","level":"ERROR","msg":"something failed","error":{"msg":"open file","filename":"notfound.txt","userID":"001","cause":"open notfound.txt: no such file or directory"}}
 }
 
 func doSomething() error {
@@ -39,8 +36,8 @@ func doSomething() error {
 	return nil
 }
 
-// NOTE: handlerOptsForTest is a utility to fix the time attribute during testing.
-var handlerOptsForTest = slog.HandlerOptions{
+// NOTE: _handlerOptsForTest is a utility to fix the time attribute during testing.
+var _handlerOptsForTest = slog.HandlerOptions{
 	ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 		if a.Key == "time" {
 			a.Value = slog.TimeValue(time.Time{})

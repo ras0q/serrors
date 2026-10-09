@@ -1,65 +1,22 @@
 package serrors
 
 import (
-	"context"
-	"errors"
 	"log/slog"
 	"strings"
 )
 
-type LogAttrsProvider interface {
-	LogAttrs() []any
-}
-
-type LogAttrsProviderError interface {
-	error
-	LogAttrsProvider
-}
-
-type Handler struct {
-	slog.Handler
-}
-
-var _ slog.Handler = (*Handler)(nil)
-
-func NewHandler(h slog.Handler) *Handler {
-	return &Handler{h}
-}
-
-// Handle implements slog.Handler.
-func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
-	record.Attrs(func(a slog.Attr) bool {
-		if a.Key != "error" {
-			return true
-		}
-
-		v := a.Value.Any()
-		if v == nil {
-			return true
-		}
-
-		err, ok := v.(LogAttrsProviderError)
-		if !ok {
-			return true
-		}
-
-		record.Add(err.LogAttrs()...)
-
-		return true
-	})
-
-	return h.Handler.Handle(ctx, record)
-}
-
 type structuredError struct {
 	Cause error
 	Msg   string
-	Args  []any
+	Attrs []slog.Attr
 }
 
-var _ LogAttrsProviderError = structuredError{}
-var _ LogAttrsProviderError = (*structuredError)(nil)
+var (
+	_ error          = structuredError{}
+	_ slog.LogValuer = structuredError{}
+)
 
+// Error implements [error].
 func (s structuredError) Error() string {
 	var buf strings.Builder
 	buf.WriteString(s.Msg)
@@ -76,30 +33,37 @@ func (s structuredError) Unwrap() error {
 	return s.Cause
 }
 
-// LogAttrs implements LogAttrsProvider
-func (s structuredError) LogAttrs() []any {
-	args := s.Args
-
-	for err := s.Cause; err != nil; err = errors.Unwrap(err) {
-		provider, ok := err.(LogAttrsProviderError)
-		if !ok {
-			break
-		}
-
-		args = append(args, provider.LogAttrs()...)
+// LogValue implements [slog.LogValuer].
+func (s structuredError) LogValue() slog.Value {
+	attrs := make([]slog.Attr, 0, 1+len(s.Attrs)+1)
+	attrs = append(attrs, slog.String("msg", s.Msg))
+	attrs = append(attrs, s.Attrs...)
+	if s.Cause != nil {
+		attrs = append(attrs, slog.Any("cause", s.Cause))
 	}
 
-	return args
+	return slog.GroupValue(attrs...)
 }
 
+// New returns an error whose message and args are logged via [slog.LogValuer].
 func New(msg string, args ...any) error {
 	return Wrap(nil, msg, args...)
 }
 
+// Wrap returns an error whose message, args, and cause are logged via [slog.LogValuer].
+// args use slog's key-value rules.
 func Wrap(cause error, msg string, args ...any) error {
+	var record slog.Record
+	record.Add(args...)
+	attrs := make([]slog.Attr, 0, record.NumAttrs())
+	record.Attrs(func(a slog.Attr) bool {
+		attrs = append(attrs, a)
+		return true
+	})
+
 	return &structuredError{
 		Cause: cause,
 		Msg:   msg,
-		Args:  args,
+		Attrs: attrs,
 	}
 }
